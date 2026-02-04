@@ -1,246 +1,224 @@
-# 🦀 Rust Rush
+# 🦀 Rust Rush - Tower Defense Game
 
-A high-performance tower defense game showcasing Rust's computational power, Go's concurrency, and modern web technologies.
+A multiplayer tower defense game built with Rust, Go, and React. Place towers strategically to stop enemies from reaching the goal!
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)
-![Go](https://img.shields.io/badge/go-1.21+-00ADD8.svg)
-![React](https://img.shields.io/badge/react-18+-61DAFB.svg)
+## 🎮 Features
 
-## 🎮 About
+### Currently Implemented
+- ✅ **Interactive Tower Placement** - Click to place 4 different tower types
+- ✅ **Smart Enemy Pathfinding** - Enemies use A* algorithm to navigate around towers
+- ✅ **Real-time Animation** - Smooth 60 FPS enemy movement
+- ✅ **Dynamic Path Recalculation** - Enemies reroute when towers are placed
+- ✅ **WebSocket Communication** - Real-time updates between client and server
+- ✅ **Tower Types**: Basic, Sniper, Splash, Slow
+- ✅ **Pause/Resume** - Control game speed
+- ✅ **Path Blocking Detection** - Prevents spawning when path is blocked
 
-Rust Rush is a real-time tower defense game where players strategically place towers to defend against waves of enemies. Built with performance in mind, the game leverages:
-
-- **Rust** for the core game engine and pathfinding algorithms (A*)
-- **Go** for the WebSocket server and real-time game state management
-- **PostgreSQL** for persistent player data, wave configurations, and leaderboards
-- **React + TypeScript** for a responsive and interactive game interface
-
-## ✨ Features
-
-### Core Gameplay
-- [ ] Real-time tower defense mechanics
-- [ ] Multiple tower types (Basic, Sniper, Splash, Slow)
-- [ ] Enemy pathfinding using A* algorithm
-- [ ] Wave-based progression system
-- [ ] Resource management (gold/energy system)
-
-### Technical Highlights
-- [ ] **Rust Game Engine**: High-performance game loop and collision detection
-- [ ] **A* Pathfinding**: Efficient enemy navigation around towers
-- [ ] **WebSocket Real-time**: Multiplayer support and live game updates
-- [ ] **Canvas Rendering**: Smooth 60 FPS gameplay
-- [ ] **State Management**: Redux for complex game state
-
-### Database Features
-- [ ] Player progression and statistics
-- [ ] Tower upgrade trees
-- [ ] Wave configurations and difficulty scaling
-- [ ] Global leaderboards
-- [ ] Achievement system
+### In Development
+- 🚧 Tower shooting mechanics
+- 🚧 Enemy damage and death
+- 🚧 Wave system
+- 🚧 Gold and resource management
+- 🚧 Victory/defeat conditions
 
 ## 🏗️ Architecture
-
 ```
-rust-rush/
-├── game-engine/          # Rust game logic
-│   ├── src/
-│   │   ├── pathfinding.rs    # A* implementation
-│   │   ├── towers.rs         # Tower logic and attacks
-│   │   ├── enemies.rs        # Enemy behaviors
-│   │   └── game_state.rs     # Core game state management
-│   └── Cargo.toml
-├── server/               # Go WebSocket server
-│   ├── cmd/
-│   │   └── main.go
-│   ├── internal/
-│   │   ├── game/         # Game room management
-│   │   ├── websocket/    # WebSocket handlers
-│   │   └── database/     # PostgreSQL integration
-│   └── go.mod
-├── client/               # React + TypeScript frontend
-│   ├── src/
-│   │   ├── components/   # React components
-│   │   ├── game/         # Canvas rendering
-│   │   ├── hooks/        # Custom React hooks
-│   │   └── store/        # Redux store
-│   └── package.json
-└── database/
-    └── migrations/       # SQL schema migrations
+┌─────────────┐         ┌─────────────┐         ┌─────────────┐
+│   React     │ ◄──────►│   Go        │ ◄──────►│   Rust      │
+│   Client    │         │   Server    │         │   Engine    │
+│             │         │             │         │             │
+│  - Canvas   │         │ - WebSocket │         │ - A* Path   │
+│  - UI       │         │ - Rooms     │         │ - Game      │
+│  - 60 FPS   │         │ - Hub       │         │   Logic     │
+└─────────────┘         └─────────────┘         └─────────────┘
 ```
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-
-- Rust 1.75+
-- Go 1.21+
-- Node.js 18+
-- PostgreSQL 15+
+- **Rust** (1.70+): https://rustup.rs
+- **Go** (1.21+): https://go.dev/dl/
+- **Node.js** (18+): https://nodejs.org
+- **PostgreSQL** (16+): https://postgresql.org
 
 ### Installation
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/rust-rush.git
+git clone https://github.com/jdizzle18/rust-rush.git
 cd rust-rush
 ```
 
 2. **Set up the database**
 ```bash
-createdb rustrush
-psql rustrush < database/schema.sql
+createdb -U postgres rustrush
+psql -U postgres rustrush -f database/schema.sql
 ```
 
-3. **Build the Rust game engine**
-```bash
-cd game-engine
-cargo build --release
-```
-
-4. **Run the Go server**
+3. **Configure environment**
 ```bash
 cd server
+cp .env.example .env
+# Edit .env with your database credentials
+```
+
+4. **Install dependencies**
+```bash
+# Go server
+cd server
 go mod download
+
+# React client
+cd ../client
+npm install
+```
+
+### Running the Game
+
+**Terminal 1 - Rust Engine** (optional for now):
+```bash
+cd game-engine
+cargo run
+```
+
+**Terminal 2 - Go Server**:
+```bash
+cd server
 go run cmd/main.go
 ```
 
-5. **Start the React client**
+**Terminal 3 - React Client**:
 ```bash
 cd client
-npm install
 npm run dev
 ```
 
-6. **Open your browser**
+Open http://localhost:5173 in your browser!
+
+## 🎯 How to Play
+
+1. **Place Towers** - Select a tower type and click on the grid
+2. **Spawn Enemies** - Click "🦀 Spawn Test Enemy" to test pathfinding
+3. **Watch Them Navigate** - Enemies use A* to find paths around towers
+4. **Block Their Path** - Surround enemies to trap them
+5. **Pause** - Use pause/resume to control the action
+
+### Tower Types
+
+| Tower   | Cost | Range | Damage | Fire Rate | Best For           |
+|---------|------|-------|--------|-----------|-------------------|
+| 🗼 Basic  | $50  | 3.0   | 10     | 1.0/sec   | All-around defense |
+| 🎯 Sniper | $100 | 6.0   | 50     | 0.3/sec   | Long-range, high damage |
+| 💥 Splash | $75  | 2.5   | 15     | 0.8/sec   | Area damage |
+| ❄️ Slow   | $60  | 3.5   | 5      | 2.0/sec   | Slowing enemies |
+
+### Controls
+
+- **Left Click** - Place selected tower
+- **Hover** - Preview tower range
+- **Pause Button** - Pause/resume game
+- **Clear All** - Remove all towers and enemies
+
+## 🛠️ Tech Stack
+
+### Frontend
+- **React 18** with TypeScript
+- **Canvas API** for rendering
+- **WebSocket** for real-time updates
+- **Vite** for fast development
+
+### Backend
+- **Go 1.21** with Gorilla WebSocket
+- **Room-based multiplayer** support
+- **Message broadcasting** system
+
+### Game Engine
+- **Rust** for game logic
+- **A* pathfinding** algorithm
+- **Serde** for serialization
+- **Comprehensive unit tests**
+
+### Database
+- **PostgreSQL** for persistence
+- Game state storage
+- User data (future)
+
+## 📂 Project Structure
 ```
-http://localhost:5173
-```
-
-## 🎯 Roadmap
-
-### Phase 1: Core Mechanics (MVP)
-- [ ] Basic tower placement and removal
-- [ ] Single enemy type with A* pathfinding
-- [ ] Simple wave system (5 waves)
-- [ ] Win/loss conditions
-- [ ] Basic UI (health, gold, wave counter)
-
-### Phase 2: Content & Polish
-- [ ] 4 tower types with unique abilities
-- [ ] 5 enemy types with different speeds/health
-- [ ] Tower upgrade system (3 levels each)
-- [ ] 20 waves with increasing difficulty
-- [ ] Particle effects and animations
-
-### Phase 3: Persistence & Competition
-- [ ] User authentication
-- [ ] Save/load game state
-- [ ] Global leaderboards
-- [ ] Achievement system
-- [ ] Daily challenges
-
-### Phase 4: Multiplayer
-- [ ] Co-op mode (2 players share a map)
-- [ ] Competitive mode (race to highest wave)
-- [ ] Spectator mode
-- [ ] Replay system
-
-## 🛠️ Tech Stack Justification
-
-| Technology | Purpose | Why? |
-|------------|---------|------|
-| **Rust** | Game engine & pathfinding | Performance-critical calculations, memory safety |
-| **Go** | WebSocket server | Excellent concurrency for handling multiple game rooms |
-| **PostgreSQL** | Persistent storage | Complex queries for leaderboards and analytics |
-| **React + TypeScript** | UI & Canvas rendering | Type safety and component reusability |
-| **Canvas API** | Game rendering | Better performance than DOM for 60 FPS gameplay |
-
-## 📊 Database Schema
-
-```sql
--- Players
-CREATE TABLE players (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Game Sessions
-CREATE TABLE game_sessions (
-    id SERIAL PRIMARY KEY,
-    player_id INT REFERENCES players(id),
-    waves_completed INT,
-    score INT,
-    towers_built INT,
-    enemies_killed INT,
-    started_at TIMESTAMP,
-    ended_at TIMESTAMP
-);
-
--- Leaderboards
-CREATE TABLE leaderboards (
-    id SERIAL PRIMARY KEY,
-    player_id INT REFERENCES players(id),
-    high_score INT,
-    max_wave INT,
-    total_games_played INT,
-    updated_at TIMESTAMP DEFAULT NOW()
-);
+rust-rush/
+├── game-engine/          # Rust game logic
+│   ├── src/
+│   │   ├── main.rs       # Game structs and logic
+│   │   └── pathfinding.rs # A* algorithm
+│   └── Cargo.toml
+├── server/               # Go WebSocket server
+│   ├── cmd/main.go       # Server entry point
+│   └── internal/
+│       ├── game/         # Game state management
+│       └── websocket/    # WebSocket handlers
+├── client/               # React frontend
+│   ├── src/
+│   │   ├── App.tsx       # Main app component
+│   │   ├── game/
+│   │   │   └── GameCanvas.tsx  # Canvas rendering
+│   │   ├── hooks/
+│   │   │   └── useWebSocket.ts # WebSocket hook
+│   │   └── types/
+│   │       └── game.ts   # TypeScript types
+│   └── package.json
+└── database/
+    └── schema.sql        # Database schema
 ```
 
 ## 🧪 Testing
 
+### Rust Tests
 ```bash
-# Test Rust game engine
 cd game-engine
 cargo test
-
-# Test Go server
-cd server
-go test ./...
-
-# Test React client
-cd client
-npm test
 ```
 
-## 📝 Performance Metrics
+**Expected output**: 17 tests passing
+- Unit tests for pathfinding
+- Game state tests
+- Grid manipulation tests
 
-Current benchmarks (on mid-range hardware):
-- Pathfinding: ~0.5ms per enemy per frame
-- Game loop: Consistent 60 FPS with 100+ enemies
-- WebSocket latency: <20ms average
-- Memory usage: ~50MB for full game session
+### Manual Testing Checklist
+- [ ] Place all 4 tower types
+- [ ] Spawn multiple enemies
+- [ ] Enemies navigate around towers
+- [ ] Place tower while enemy is moving (path recalculates)
+- [ ] Block path completely (spawn fails with alert)
+- [ ] Pause/resume works
+- [ ] Clear all removes everything
+- [ ] Hover shows tower range
+
+## 🐛 Known Issues
+
+- Towers don't shoot yet (in development)
+- Enemies don't take damage (in development)
+- "Start Wave" button not functional (in development)
+- Gold/health don't update (in development)
 
 ## 🤝 Contributing
 
-This is a portfolio project, but suggestions and feedback are welcome!
+This is a personal learning project, but feedback is welcome!
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## 📝 License
 
-## 📄 License
-
-MIT License - see LICENSE file for details
+MIT License - See LICENSE file for details
 
 ## 🙏 Acknowledgments
 
-- A* pathfinding algorithm inspired by [Red Blob Games](https://www.redblobgames.com/pathfinding/a-star/introduction.html)
-- Tower defense mechanics inspired by Bloons TD and Kingdom Rush
-- Built as part of a polyglot programming portfolio
+- A* pathfinding algorithm
+- Gorilla WebSocket library
+- React + Vite for smooth development
+- The Rust community for excellent documentation
 
 ## 📧 Contact
 
-**JD**
-
-- GitHub: [@jdizzle18](https://github.com/jdizzle18)
-- Project Link: [https://github.com/yourusername/rust-rush](https://github.com/yourusername/rust-rush)
+GitHub: [@jdizzle18](https://github.com/jdizzle18)
 
 ---
 
-**Built with ❤️ and Rust 🦀**
+**Built with** 🦀 Rust, 🐹 Go, and ⚛️ React
