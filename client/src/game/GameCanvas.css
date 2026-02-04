@@ -57,11 +57,21 @@ canvas {
   color: white;
   cursor: pointer;
   transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.tower-btn .cost {
+  font-size: 12px;
+  color: #ffd700;
 }
 
 .tower-btn:hover {
   background-color: #3a3a3a;
   border-color: #777;
+  transform: translateY(-2px);
 }
 
 .tower-btn.selected {
@@ -108,4 +118,31 @@ canvas {
 .btn-secondary:hover {
   background-color: #666;
   transform: translateY(-2px);
+}
+
+.btn-danger {
+  background-color: #f44336;
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #da190b;
+  transform: translateY(-2px);
+}
+
+.info-box {
+  background-color: #2a2a2a;
+  padding: 15px 20px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.info-box p {
+  margin: 5px 0;
+}
+
+.info-box .hint {
+  color: #888;
+  font-size: 14px;
+  font-style: italic;
 }
