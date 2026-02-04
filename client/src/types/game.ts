@@ -4,6 +4,7 @@ export interface Position {
 }
 
 export type TowerType = 'basic' | 'sniper' | 'splash' | 'slow'
+export type EnemyType = 'basic' | 'fast' | 'tank' | 'flying' | 'boss'
 
 export interface Tower {
   id: number
@@ -16,9 +17,12 @@ export interface Tower {
 export interface Enemy {
   id: number
   position: Position
-  enemy_type: string
+  enemy_type: EnemyType
   health: number
   max_health: number
+  speed: number
+  path?: Position[]
+  path_index?: number
 }
 
 export interface GameState {
@@ -28,4 +32,6 @@ export interface GameState {
   health: number
   wave: number
   game_time: number
+  spawn_point?: Position
+  goal_point?: Position
 }

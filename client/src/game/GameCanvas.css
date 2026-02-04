@@ -83,6 +83,8 @@ canvas {
 .controls {
   display: flex;
   gap: 15px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .btn {
@@ -107,6 +109,16 @@ canvas {
 
 .btn-primary:hover:not(:disabled) {
   background-color: #45a049;
+  transform: translateY(-2px);
+}
+
+.btn-success {
+  background-color: #00bcd4;
+  color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: #0097a7;
   transform: translateY(-2px);
 }
 
