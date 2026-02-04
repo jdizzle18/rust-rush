@@ -1,0 +1,52 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.App-header {
+  padding: 20px;
+  background-color: #1a1a1a;
+  border-bottom: 3px solid #4CAF50;
+  margin-bottom: 30px;
+}
+
+.App-header h1 {
+  margin: 0;
+  font-size: 2.5em;
+  background: linear-gradient(135deg, #ff6b00 0%, #ff9d00 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.status {
+  margin-top: 10px;
+  font-size: 1.1em;
+}
+
+main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+footer {
+  padding: 20px;
+  color: #888;
+  font-size: 0.9em;
+  border-top: 1px solid #333;
+  margin-top: 40px;
+}
+
+footer p {
+  margin: 0;
+}
