@@ -19,7 +19,7 @@ Rust Rush is a real-time tower defense game where players strategically place to
 ## ✨ Features
 
 ### Core Gameplay
-- [x] Real-time tower defense mechanics
+- [ ] Real-time tower defense mechanics
 - [ ] Multiple tower types (Basic, Sniper, Splash, Slow)
 - [ ] Enemy pathfinding using A* algorithm
 - [ ] Wave-based progression system
