@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"time"
@@ -12,7 +13,7 @@ const (
 	writeWait      = 10 * time.Second
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
-	maxMessageSize = 512 * 1024 // 512 KB
+	maxMessageSize = 512 * 1024
 )
 
 var upgrader = websocket.Upgrader{
@@ -25,10 +26,11 @@ var upgrader = websocket.Upgrader{
 
 // Client represents a WebSocket client
 type Client struct {
-	hub  *Hub
-	conn *websocket.Conn
-	send chan []byte
-	id   string
+	hub    *Hub
+	conn   *websocket.Conn
+	send   chan []byte
+	id     string
+	roomID string
 }
 
 // readPump pumps messages from the WebSocket connection to the hub
@@ -46,7 +48,7 @@ func (c *Client) readPump() {
 	})
 
 	for {
-		_, message, err := c.conn.ReadMessage()
+		_, messageBytes, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
@@ -54,8 +56,101 @@ func (c *Client) readPump() {
 			break
 		}
 
-		// Broadcast message to all clients (simplified for now)
-		c.hub.broadcast <- message
+		// Parse the message
+		var msg Message
+		if err := json.Unmarshal(messageBytes, &msg); err != nil {
+			log.Printf("Failed to parse message: %v", err)
+			continue
+		}
+
+		// Handle the message
+		c.handleMessage(&msg)
+	}
+}
+
+// handleMessage processes different message types
+func (c *Client) handleMessage(msg *Message) {
+	log.Printf("Client %s received message type: %s", c.id, msg.Type)
+
+	switch msg.Type {
+	case MessageTypeJoinRoom:
+		if msg.RoomID != "" {
+			c.roomID = msg.RoomID
+			c.hub.gameManager.AddPlayer(msg.RoomID, c.id)
+
+			// Send confirmation
+			response := Message{
+				Type:   MessageTypeJoinRoom,
+				RoomID: msg.RoomID,
+				Payload: map[string]interface{}{
+					"status":   "joined",
+					"clientId": c.id,
+				},
+			}
+			c.sendJSON(response)
+
+			log.Printf("Client %s joined room %s", c.id, msg.RoomID)
+		}
+
+	case MessageTypeLeaveRoom:
+		if c.roomID != "" {
+			c.hub.gameManager.RemovePlayer(c.roomID, c.id)
+			c.roomID = ""
+		}
+
+	case MessageTypePlaceTower:
+		log.Printf("Place tower request: %v", msg.Payload)
+		// TODO: Call Rust engine to place tower
+
+		// Send acknowledgment
+		response := Message{
+			Type: MessageTypeGameState,
+			Payload: map[string]interface{}{
+				"action": "tower_placed",
+				"tower":  msg.Payload,
+			},
+		}
+		c.sendJSON(response)
+
+	case MessageTypeRemoveTower:
+		log.Printf("Remove tower request: %v", msg.Payload)
+		// TODO: Call Rust engine to remove tower
+
+	case MessageTypeStartWave:
+		log.Printf("Start wave request from client %s", c.id)
+		// TODO: Call Rust engine to start wave
+
+		// Send acknowledgment
+		response := Message{
+			Type: MessageTypeGameState,
+			Payload: map[string]interface{}{
+				"action": "wave_started",
+				"wave":   1,
+			},
+		}
+		c.sendJSON(response)
+
+	case MessageTypePauseGame:
+		log.Printf("Pause game request from client %s", c.id)
+		// TODO: Pause game logic
+
+	default:
+		log.Printf("Unknown message type: %s", msg.Type)
+	}
+}
+
+// sendJSON sends a JSON message to the client
+func (c *Client) sendJSON(msg Message) {
+	data, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("Failed to marshal message: %v", err)
+		return
+	}
+
+	select {
+	case c.send <- data:
+	default:
+		log.Printf("Client %s send buffer full", c.id)
 	}
 }
 
@@ -118,5 +213,5 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 }
 
 func generateClientID() string {
-	return time.Now().Format("20060102150405") // Simple ID for now
+	return "client-" + time.Now().Format("20060102150405999")
 }

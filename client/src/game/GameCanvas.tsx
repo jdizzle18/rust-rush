@@ -10,9 +10,16 @@ interface Position {
   y: number
 }
 
-const GameCanvas = () => {
+interface GameCanvasProps {
+  isConnected: boolean
+  onPlaceTower: (x: number, y: number, towerType: string) => void
+  onStartWave: () => void
+}
+
+const GameCanvas = ({ isConnected, onPlaceTower, onStartWave }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [hoveredCell, setHoveredCell] = useState<Position | null>(null)
+  const [selectedTower, setSelectedTower] = useState<string>('basic')
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -79,10 +86,19 @@ const GameCanvas = () => {
     setHoveredCell(null)
   }
 
-  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (hoveredCell) {
-      console.log(`Clicked cell: (${hoveredCell.x}, ${hoveredCell.y})`)
-      // TODO: Place tower at this position
+  const handleClick = () => {
+    if (hoveredCell && isConnected) {
+      console.log(`Placing ${selectedTower} tower at (${hoveredCell.x}, ${hoveredCell.y})`)
+      onPlaceTower(hoveredCell.x, hoveredCell.y, selectedTower)
+    } else if (!isConnected) {
+      console.log('Not connected to server')
+    }
+  }
+
+  const handleStartWave = () => {
+    if (isConnected) {
+      console.log('Starting wave')
+      onStartWave()
     }
   }
 
@@ -98,6 +114,40 @@ const GameCanvas = () => {
         <div className="info-item">
           <span>🌊 Wave:</span> <strong>1</strong>
         </div>
+        <div className="info-item">
+          <span>🔌 Server:</span> 
+          <strong className={isConnected ? 'connected' : 'disconnected'}>
+            {isConnected ? 'Connected' : 'Disconnected'}
+          </strong>
+        </div>
+      </div>
+
+      {/* Tower selection */}
+      <div className="tower-selection">
+        <button 
+          className={`tower-btn ${selectedTower === 'basic' ? 'selected' : ''}`}
+          onClick={() => setSelectedTower('basic')}
+        >
+          🗼 Basic Tower
+        </button>
+        <button 
+          className={`tower-btn ${selectedTower === 'sniper' ? 'selected' : ''}`}
+          onClick={() => setSelectedTower('sniper')}
+        >
+          🎯 Sniper Tower
+        </button>
+        <button 
+          className={`tower-btn ${selectedTower === 'splash' ? 'selected' : ''}`}
+          onClick={() => setSelectedTower('splash')}
+        >
+          💥 Splash Tower
+        </button>
+        <button 
+          className={`tower-btn ${selectedTower === 'slow' ? 'selected' : ''}`}
+          onClick={() => setSelectedTower('slow')}
+        >
+          ❄️ Slow Tower
+        </button>
       </div>
 
       <canvas
@@ -110,7 +160,13 @@ const GameCanvas = () => {
       />
 
       <div className="controls">
-        <button className="btn btn-primary">Start Wave</button>
+        <button 
+          className="btn btn-primary" 
+          onClick={handleStartWave}
+          disabled={!isConnected}
+        >
+          Start Wave
+        </button>
         <button className="btn btn-secondary">Pause</button>
       </div>
     </div>

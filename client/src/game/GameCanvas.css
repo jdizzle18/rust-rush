@@ -20,6 +20,7 @@ canvas {
   padding: 15px 30px;
   border-radius: 8px;
   font-size: 18px;
+  flex-wrap: wrap;
 }
 
 .info-item {
@@ -30,6 +31,43 @@ canvas {
 
 .info-item strong {
   color: #ffd700;
+}
+
+.info-item strong.connected {
+  color: #4CAF50;
+}
+
+.info-item strong.disconnected {
+  color: #f44336;
+}
+
+.tower-selection {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.tower-btn {
+  padding: 10px 20px;
+  font-size: 16px;
+  border: 2px solid #555;
+  border-radius: 6px;
+  background-color: #2a2a2a;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tower-btn:hover {
+  background-color: #3a3a3a;
+  border-color: #777;
+}
+
+.tower-btn.selected {
+  background-color: #4CAF50;
+  border-color: #4CAF50;
+  font-weight: bold;
 }
 
 .controls {
@@ -47,12 +85,17 @@ canvas {
   transition: all 0.2s;
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-primary {
   background-color: #4CAF50;
   color: white;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background-color: #45a049;
   transform: translateY(-2px);
 }
