@@ -1,7 +1,11 @@
 # 🦀 Rust Rush - Tower Defense Game
 
-A multiplayer tower defense game built with Rust, Go, and React. Place towers strategically to stop enemies from reaching the goal!
+A high-performance tower defense game showcasing Rust's computational power, Go's concurrency, and modern web technologies.
 
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)
+![Go](https://img.shields.io/badge/go-1.21+-00ADD8.svg)
+![React](https://img.shields.io/badge/react-18+-61DAFB.svg)
 ## 🎮 Features
 
 ### Currently Implemented
