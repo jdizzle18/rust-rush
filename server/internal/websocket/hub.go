@@ -16,6 +16,8 @@ const (
 	MessageTypeRemoveTower = "remove_tower"
 	MessageTypeStartWave   = "start_wave"
 	MessageTypePauseGame   = "pause_game"
+	MessageTypeSpawnEnemy  = "spawn_enemy"
+	MessageTypeClearAll    = "clear_all"
 )
 
 // Message represents a WebSocket message
@@ -45,8 +47,11 @@ func NewHub(gameManager *game.Manager) *Hub {
 	}
 }
 
-// Run starts the hub
+// Run starts the hub and listens for broadcasts from the game manager
 func (h *Hub) Run() {
+	// Start listening to game manager broadcasts
+	go h.listenToGameBroadcasts()
+
 	for {
 		select {
 		case client := <-h.register:
@@ -79,6 +84,35 @@ func (h *Hub) Run() {
 	}
 }
 
+// listenToGameBroadcasts listens for game state updates from the manager
+func (h *Hub) listenToGameBroadcasts() {
+	broadcastChan := h.gameManager.GetBroadcastChannel()
+
+	for msg := range broadcastChan {
+		// Wrap in game_state message
+		wrappedMsg := Message{
+			Type:   MessageTypeGameState,
+			RoomID: msg.RoomID,
+		}
+
+		// Parse the game state to include in payload
+		var gameState interface{}
+		if err := json.Unmarshal(msg.Data, &gameState); err == nil {
+			wrappedMsg.Payload = map[string]interface{}{
+				"state": gameState,
+			}
+		}
+
+		data, err := json.Marshal(wrappedMsg)
+		if err != nil {
+			log.Printf("Failed to marshal wrapped game state: %v", err)
+			continue
+		}
+
+		h.BroadcastToRoom(msg.RoomID, data)
+	}
+}
+
 // BroadcastToRoom sends a message to all clients in a specific room
 func (h *Hub) BroadcastToRoom(roomID string, message []byte) {
 	for client := range h.clients {
@@ -95,6 +129,30 @@ func (h *Hub) BroadcastToRoom(roomID string, message []byte) {
 
 // BroadcastGameState broadcasts the current game state to all clients in a room
 func (h *Hub) BroadcastGameState(roomID string) {
+	// Try shooting room first
+	shootingRoom, exists := h.gameManager.GetShootingRoom(roomID)
+	if exists {
+		snapshot := shootingRoom.GetSnapshot()
+
+		msg := Message{
+			Type:   MessageTypeGameState,
+			RoomID: roomID,
+			Payload: map[string]interface{}{
+				"state": snapshot,
+			},
+		}
+
+		data, err := json.Marshal(msg)
+		if err != nil {
+			log.Printf("Failed to marshal game state: %v", err)
+			return
+		}
+
+		h.BroadcastToRoom(roomID, data)
+		return
+	}
+
+	// Fall back to legacy room
 	room, exists := h.gameManager.GetRoom(roomID)
 	if !exists {
 		return

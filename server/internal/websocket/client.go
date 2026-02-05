@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"rust-rush/server/internal/game"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -76,20 +78,40 @@ func (c *Client) handleMessage(msg *Message) {
 	case MessageTypeJoinRoom:
 		if msg.RoomID != "" {
 			c.roomID = msg.RoomID
+
+			// Create a shooting room if it doesn't exist
+			_, exists := c.hub.gameManager.GetShootingRoom(msg.RoomID)
+			if !exists {
+				room := c.hub.gameManager.CreateShootingRoom(msg.RoomID)
+
+				// Start game loop for this room
+				go c.hub.gameManager.StartGameLoop(msg.RoomID)
+
+				log.Printf("Created new shooting room: %s", msg.RoomID)
+
+				// Set spawn and goal points
+				room.SpawnPoint = &game.Position{X: 0, Y: 7}
+				room.GoalPoint = &game.Position{X: 19, Y: 7}
+			}
+
 			c.hub.gameManager.AddPlayer(msg.RoomID, c.id)
 
-			// Send confirmation
+			// Send confirmation with current game state
+			room, _ := c.hub.gameManager.GetShootingRoom(msg.RoomID)
+			snapshot := room.GetSnapshot()
+
 			response := Message{
 				Type:   MessageTypeJoinRoom,
 				RoomID: msg.RoomID,
 				Payload: map[string]interface{}{
 					"status":   "joined",
 					"clientId": c.id,
+					"state":    snapshot,
 				},
 			}
 			c.sendJSON(response)
 
-			log.Printf("Client %s joined room %s", c.id, msg.RoomID)
+			log.Printf("Client %s joined shooting room %s", c.id, msg.RoomID)
 		}
 
 	case MessageTypeLeaveRoom:
@@ -99,26 +121,160 @@ func (c *Client) handleMessage(msg *Message) {
 		}
 
 	case MessageTypePlaceTower:
-		log.Printf("Place tower request: %v", msg.Payload)
-		// TODO: Call Rust engine to place tower
+		// Use room_id from message if provided, otherwise use client's stored roomID
+		roomID := msg.RoomID
+		if roomID == "" {
+			roomID = c.roomID
+		}
+
+		if roomID == "" {
+			log.Printf("Client %s tried to place tower but is not in a room", c.id)
+			return
+		}
+
+		// Extract tower placement data
+		x, xOk := msg.Payload["x"].(float64)
+		y, yOk := msg.Payload["y"].(float64)
+		towerType, typeOk := msg.Payload["tower_type"].(string)
+
+		if !xOk || !yOk || !typeOk {
+			log.Printf("Invalid tower placement data: %v", msg.Payload)
+			return
+		}
+
+		room, exists := c.hub.gameManager.GetShootingRoom(roomID)
+		if !exists {
+			log.Printf("Room %s does not exist", roomID)
+			return
+		}
+
+		// Add tower to game state
+		tower := room.AddTower(x, y, towerType)
+
+		log.Printf("Placed %s tower at (%.1f, %.1f) in room %s", towerType, x, y, roomID)
+
+		// Broadcast updated state immediately
+		c.hub.BroadcastGameState(roomID)
 
 		// Send acknowledgment
 		response := Message{
-			Type: MessageTypeGameState,
+			Type: MessageTypePlaceTower,
 			Payload: map[string]interface{}{
-				"action": "tower_placed",
-				"tower":  msg.Payload,
+				"status": "placed",
+				"tower":  tower,
 			},
 		}
 		c.sendJSON(response)
 
 	case MessageTypeRemoveTower:
 		log.Printf("Remove tower request: %v", msg.Payload)
-		// TODO: Call Rust engine to remove tower
+		// TODO: Implement tower removal
+
+	case MessageTypeSpawnEnemy:
+		// Use room_id from message if provided, otherwise use client's stored roomID
+		roomID := msg.RoomID
+		if roomID == "" {
+			roomID = c.roomID
+		}
+
+		if roomID == "" {
+			log.Printf("Client %s tried to spawn enemy but is not in a room", c.id)
+			return
+		}
+
+		room, exists := c.hub.gameManager.GetShootingRoom(roomID)
+		if !exists {
+			log.Printf("Room %s does not exist", roomID)
+			return
+		}
+
+		// Extract enemy type and path
+		enemyType := "basic"
+		if et, ok := msg.Payload["enemy_type"].(string); ok {
+			enemyType = et
+		}
+
+		// Get path from payload
+		var path []game.Position
+		if pathData, ok := msg.Payload["path"].([]interface{}); ok {
+			for _, p := range pathData {
+				if posMap, ok := p.(map[string]interface{}); ok {
+					x, xOk := posMap["x"].(float64)
+					y, yOk := posMap["y"].(float64)
+					if xOk && yOk {
+						path = append(path, game.Position{X: x, Y: y})
+					}
+				}
+			}
+		}
+
+		// If no path provided, use a default path
+		if len(path) == 0 {
+			if room.SpawnPoint != nil && room.GoalPoint != nil {
+				path = []game.Position{
+					*room.SpawnPoint,
+					*room.GoalPoint,
+				}
+			}
+		}
+
+		if len(path) > 0 {
+			enemy := room.AddEnemy(enemyType, path)
+			log.Printf("Spawned %s enemy with ID %d in room %s", enemyType, enemy.ID, roomID)
+
+			// Broadcast updated state
+			c.hub.BroadcastGameState(roomID)
+
+			// Send acknowledgment
+			response := Message{
+				Type: MessageTypeSpawnEnemy,
+				Payload: map[string]interface{}{
+					"status": "spawned",
+					"enemy":  enemy,
+				},
+			}
+			c.sendJSON(response)
+		}
+
+	case MessageTypeClearAll:
+		// Use room_id from message if provided, otherwise use client's stored roomID
+		roomID := msg.RoomID
+		if roomID == "" {
+			roomID = c.roomID
+		}
+
+		if roomID == "" {
+			log.Printf("Client %s tried to clear all but is not in a room", c.id)
+			return
+		}
+
+		room, exists := c.hub.gameManager.GetShootingRoom(roomID)
+		if !exists {
+			log.Printf("Room %s does not exist", roomID)
+			return
+		}
+
+		// Clear towers and enemies
+		room.RemoveAllTowers()
+		room.RemoveAllEnemies()
+
+		log.Printf("Cleared all towers and enemies in room %s", roomID)
+
+		// Broadcast updated state
+		c.hub.BroadcastGameState(roomID)
+
+		// Send acknowledgment
+		response := Message{
+			Type: MessageTypeClearAll,
+			Payload: map[string]interface{}{
+				"status": "cleared",
+			},
+		}
+		c.sendJSON(response)
 
 	case MessageTypeStartWave:
 		log.Printf("Start wave request from client %s", c.id)
-		// TODO: Call Rust engine to start wave
+		// TODO: Implement wave system
 
 		// Send acknowledgment
 		response := Message{

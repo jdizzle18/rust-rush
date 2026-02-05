@@ -17,7 +17,6 @@ interface GameCanvasProps {
   onStartWave: () => void
   onClearTowers: () => void
   onSpawnEnemy?: () => void
-  pathUpdateTrigger?: number
   gameState?: GameState
 }
 
@@ -27,94 +26,28 @@ const GameCanvas = ({
   onStartWave, 
   onClearTowers, 
   onSpawnEnemy,
-  pathUpdateTrigger,
   gameState 
 }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationFrameRef = useRef<number>()
-  const lastTimeRef = useRef<number>(0)
   
   const [hoveredCell, setHoveredCell] = useState<Position | null>(null)
   const [selectedTower, setSelectedTower] = useState<TowerType>('basic')
-  const [localTowers, setLocalTowers] = useState<Tower[]>([])
-  const [localEnemies, setLocalEnemies] = useState<Enemy[]>([])
-  const [isPaused, setIsPaused] = useState(false)
 
-  // Update local towers immediately
+  // Use server state directly - no local state!
+  const towers = gameState?.towers || []
+  const enemies = gameState?.enemies || []
+  const projectiles = gameState?.projectiles || []
+  const muzzleFlashes = gameState?.muzzle_flashes || []
+  const explosions = gameState?.explosions || []
+
+  // Animation loop - just render, don't update state
   useEffect(() => {
-    if (gameState?.towers) {
-      setLocalTowers(gameState.towers)
-    }
-  }, [gameState?.towers])
-
-  // Sync enemies when count changes OR when paths are recalculated
-  useEffect(() => {
-    if (gameState?.enemies) {
-      // If a new enemy was added, add it to local state
-      if (gameState.enemies.length > localEnemies.length) {
-        const newEnemies = gameState.enemies.filter(
-          gEnemy => !localEnemies.some(lEnemy => lEnemy.id === gEnemy.id)
-        )
-        setLocalEnemies(prev => [...prev, ...newEnemies])
-      }
-      // If enemies were cleared
-      else if (gameState.enemies.length === 0 && localEnemies.length > 0) {
-        setLocalEnemies([])
-      }
-      // If paths were recalculated - merge new paths with current positions
-      else if (pathUpdateTrigger !== undefined && gameState.enemies.length === localEnemies.length) {
-        setLocalEnemies(prev => 
-          prev.map(localEnemy => {
-            const updatedEnemy = gameState.enemies.find(e => e.id === localEnemy.id)
-            if (updatedEnemy && updatedEnemy.path) {
-              // Find the closest point on the new path to the enemy's current position
-              let closestIndex = 0
-              let closestDistance = Infinity
-              
-              for (let i = 0; i < updatedEnemy.path.length; i++) {
-                const pathPoint = updatedEnemy.path[i]
-                const dx = pathPoint.x - localEnemy.position.x
-                const dy = pathPoint.y - localEnemy.position.y
-                const distance = Math.sqrt(dx * dx + dy * dy)
-                
-                if (distance < closestDistance) {
-                  closestDistance = distance
-                  closestIndex = i
-                }
-              }
-              
-              console.log(`Enemy ${localEnemy.id} at (${localEnemy.position.x.toFixed(2)}, ${localEnemy.position.y.toFixed(2)}) - closest path index: ${closestIndex}`)
-              
-              // Keep the animated position, use new path starting from closest point
-              return {
-                ...localEnemy,
-                path: updatedEnemy.path,
-                path_index: closestIndex
-              }
-            }
-            return localEnemy
-          })
-        )
-      }
-    }
-  }, [gameState?.enemies?.length, pathUpdateTrigger])
-
-  // Animation loop
-  useEffect(() => {
-    const animate = (currentTime: number) => {
-      const deltaTime = (currentTime - lastTimeRef.current) / 1000
-      lastTimeRef.current = currentTime
-
-      if (deltaTime > 0 && deltaTime < 0.1 && !isPaused) {
-        updateEnemies(deltaTime)
-      }
-
+    const animate = () => {
       render()
-
       animationFrameRef.current = requestAnimationFrame(animate)
     }
 
-    lastTimeRef.current = performance.now()
     animationFrameRef.current = requestAnimationFrame(animate)
 
     return () => {
@@ -122,56 +55,7 @@ const GameCanvas = ({
         cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [localTowers, localEnemies, hoveredCell, selectedTower, gameState, isPaused])
-
-  const updateEnemies = (deltaTime: number) => {
-    setLocalEnemies(prevEnemies => {
-      const updatedEnemies = prevEnemies.map(enemy => {
-        if (!enemy.path || enemy.path.length === 0) {
-          return enemy
-        }
-
-        const pathIndex = enemy.path_index ?? 0
-        if (pathIndex >= enemy.path.length) {
-          return enemy
-        }
-
-        const target = enemy.path[pathIndex]
-        const targetX = target.x
-        const targetY = target.y
-
-        const dx = targetX - enemy.position.x
-        const dy = targetY - enemy.position.y
-        const distance = Math.sqrt(dx * dx + dy * dy)
-
-        if (distance < 0.1) {
-          return {
-            ...enemy,
-            position: { x: targetX, y: targetY },
-            path_index: pathIndex + 1
-          }
-        }
-
-        const speed = enemy.speed
-        const moveDistance = speed * deltaTime
-        const ratio = Math.min(moveDistance / distance, 1)
-
-        return {
-          ...enemy,
-          position: {
-            x: enemy.position.x + dx * ratio,
-            y: enemy.position.y + dy * ratio
-          }
-        }
-      })
-
-      // Remove enemies that reached the end
-      return updatedEnemies.filter(enemy => {
-        const pathIndex = enemy.path_index ?? 0
-        return pathIndex < (enemy.path?.length ?? 0)
-      })
-    })
-  }
+  }, [towers, enemies, projectiles, muzzleFlashes, explosions, hoveredCell, selectedTower, gameState])
 
   const render = () => {
     const canvas = canvasRef.current
@@ -191,12 +75,36 @@ const GameCanvas = ({
       drawGoalPoint(ctx, gameState.goal_point)
     }
 
-    localTowers.forEach(tower => {
+    // Draw tower ranges for active towers
+    towers.forEach(tower => {
+      if (tower.current_target) {
+        drawTowerRange(ctx, tower)
+      }
+    })
+
+    // Draw projectiles
+    projectiles.forEach(projectile => {
+      drawProjectile(ctx, projectile)
+    })
+
+    // Draw towers
+    towers.forEach(tower => {
       drawTower(ctx, tower)
     })
 
-    localEnemies.forEach(enemy => {
+    // Draw enemies
+    enemies.forEach(enemy => {
       drawEnemy(ctx, enemy)
+    })
+
+    // Draw muzzle flashes
+    muzzleFlashes.forEach(flash => {
+      drawMuzzleFlash(ctx, flash)
+    })
+
+    // Draw explosions
+    explosions.forEach(explosion => {
+      drawExplosion(ctx, explosion)
     })
 
     if (hoveredCell && !isCellOccupied(hoveredCell)) {
@@ -257,17 +165,20 @@ const GameCanvas = ({
     ctx.fillRect(pos.x * CELL_SIZE, pos.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
   }
 
-  const drawTower = (ctx: CanvasRenderingContext2D, tower: Tower) => {
+  const drawTowerRange = (ctx: CanvasRenderingContext2D, tower: Tower) => {
     const x = tower.position.x * CELL_SIZE + CELL_SIZE / 2
     const y = tower.position.y * CELL_SIZE + CELL_SIZE / 2
 
-    if (hoveredCell && hoveredCell.x === tower.position.x && hoveredCell.y === tower.position.y) {
-      ctx.strokeStyle = 'rgba(100, 200, 255, 0.5)'
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.arc(x, y, tower.range * CELL_SIZE, 0, Math.PI * 2)
-      ctx.stroke()
-    }
+    ctx.strokeStyle = 'rgba(255, 100, 100, 0.3)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(x, y, tower.range * CELL_SIZE, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+
+  const drawTower = (ctx: CanvasRenderingContext2D, tower: Tower) => {
+    const x = tower.position.x * CELL_SIZE + CELL_SIZE / 2
+    const y = tower.position.y * CELL_SIZE + CELL_SIZE / 2
 
     const colors = {
       basic: '#4CAF50',
@@ -276,16 +187,38 @@ const GameCanvas = ({
       slow: '#9C27B0'
     }
 
+    // Draw tower body
     ctx.fillStyle = colors[tower.tower_type]
     ctx.beginPath()
     ctx.arc(x, y, CELL_SIZE / 3, 0, Math.PI * 2)
     ctx.fill()
 
+    // Draw tower barrel (rotated)
+    const rotation = tower.rotation || 0
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(rotation)
+    
+    // Barrel
     ctx.fillStyle = '#FFF'
-    ctx.beginPath()
-    ctx.arc(x, y - 5, CELL_SIZE / 5, 0, Math.PI * 2)
-    ctx.fill()
+    ctx.fillRect(0, -4, CELL_SIZE / 2.5, 8)
+    
+    // Barrel tip
+    ctx.fillStyle = '#CCC'
+    ctx.fillRect(CELL_SIZE / 3, -3, CELL_SIZE / 6, 6)
+    
+    ctx.restore()
 
+    // Draw targeting indicator
+    if (tower.current_target) {
+      ctx.strokeStyle = '#ff0000'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(x, y, CELL_SIZE / 2.5, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+
+    // Draw level indicator
     if (tower.level > 1) {
       ctx.fillStyle = '#FFD700'
       ctx.font = 'bold 12px Arial'
@@ -320,6 +253,7 @@ const GameCanvas = ({
     ctx.arc(x, y, sizes[enemy.enemy_type], 0, Math.PI * 2)
     ctx.fill()
 
+    // Health bar
     const barWidth = CELL_SIZE * 0.8
     const barHeight = 4
     const barX = x - barWidth / 2
@@ -335,6 +269,65 @@ const GameCanvas = ({
     ctx.strokeStyle = '#000'
     ctx.lineWidth = 1
     ctx.strokeRect(barX, barY, barWidth, barHeight)
+  }
+
+  const drawProjectile = (ctx: CanvasRenderingContext2D, projectile: any) => {
+    const x = projectile.position.x * CELL_SIZE + CELL_SIZE / 2
+    const y = projectile.position.y * CELL_SIZE + CELL_SIZE / 2
+
+    // Glowing projectile
+    ctx.fillStyle = '#ffff00'
+    ctx.shadowBlur = 15
+    ctx.shadowColor = '#ffff00'
+    ctx.beginPath()
+    ctx.arc(x, y, 5, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.shadowBlur = 0
+
+    // Trail
+    ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)'
+    ctx.lineWidth = 3
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(x - 10, y)
+    ctx.lineTo(x, y)
+    ctx.stroke()
+  }
+
+  const drawMuzzleFlash = (ctx: CanvasRenderingContext2D, flash: any) => {
+    const x = flash.position.x * CELL_SIZE + CELL_SIZE / 2
+    const y = flash.position.y * CELL_SIZE + CELL_SIZE / 2
+
+    const intensity = Math.min(flash.duration / 0.1, 1)
+
+    ctx.fillStyle = `rgba(255, 255, 150, ${intensity})`
+    ctx.shadowBlur = 25
+    ctx.shadowColor = '#ffff00'
+    ctx.beginPath()
+    ctx.arc(x, y, 12 * intensity, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.shadowBlur = 0
+  }
+
+  const drawExplosion = (ctx: CanvasRenderingContext2D, explosion: any) => {
+    const x = explosion.position.x * CELL_SIZE + CELL_SIZE / 2
+    const y = explosion.position.y * CELL_SIZE + CELL_SIZE / 2
+
+    const progress = 1 - (explosion.duration / 0.3)
+    const radius = explosion.radius * CELL_SIZE * (0.5 + progress * 0.5)
+
+    // Outer ring
+    ctx.strokeStyle = `rgba(255, 100, 0, ${1 - progress})`
+    ctx.lineWidth = 4
+    ctx.beginPath()
+    ctx.arc(x, y, radius, 0, Math.PI * 2)
+    ctx.stroke()
+
+    // Inner glow
+    ctx.fillStyle = `rgba(255, 200, 0, ${(1 - progress) * 0.7})`
+    ctx.beginPath()
+    ctx.arc(x, y, radius * 0.6, 0, Math.PI * 2)
+    ctx.fill()
   }
 
   const drawTowerPreview = (ctx: CanvasRenderingContext2D, pos: Position, towerType: TowerType) => {
@@ -362,15 +355,15 @@ const GameCanvas = ({
       slow: 3.5
     }
     
-    ctx.strokeStyle = 'rgba(100, 200, 255, 0.3)'
-    ctx.lineWidth = 1
+    ctx.strokeStyle = 'rgba(100, 200, 255, 0.4)'
+    ctx.lineWidth = 2
     ctx.beginPath()
     ctx.arc(x, y, ranges[towerType] * CELL_SIZE, 0, Math.PI * 2)
     ctx.stroke()
   }
 
   const isCellOccupied = (pos: Position): boolean => {
-    return localTowers.some(t => t.position.x === pos.x && t.position.y === pos.y)
+    return towers.some(t => t.position.x === pos.x && t.position.y === pos.y)
   }
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -394,26 +387,7 @@ const GameCanvas = ({
 
   const handleClick = () => {
     if (hoveredCell && isConnected && !isCellOccupied(hoveredCell)) {
-      console.log(`Placing ${selectedTower} tower at (${hoveredCell.x}, ${hoveredCell.y})`)
       onPlaceTower(hoveredCell.x, hoveredCell.y, selectedTower)
-    } else if (isCellOccupied(hoveredCell!)) {
-      console.log('Cell already occupied')
-    } else if (!isConnected) {
-      console.log('Not connected to server')
-    }
-  }
-
-  const handleStartWave = () => {
-    if (isConnected) {
-      console.log('Starting wave')
-      onStartWave()
-    }
-  }
-
-  const handleSpawnEnemy = () => {
-    if (isConnected && onSpawnEnemy) {
-      console.log('Spawning test enemy')
-      onSpawnEnemy()
     }
   }
 
@@ -431,7 +405,7 @@ const GameCanvas = ({
     <div className="game-canvas-container">
       <div className="game-info">
         <div className="info-item">
-          <span>💰 Gold:</span> <strong>{gameState?.gold ?? 100}</strong>
+          <span>💰 Gold:</span> <strong>{gameState?.gold ?? 200}</strong>
         </div>
         <div className="info-item">
           <span>❤️ Health:</span> <strong>{gameState?.health ?? 100}</strong>
@@ -490,31 +464,22 @@ const GameCanvas = ({
       <div className="controls">
         <button 
           className="btn btn-primary" 
-          onClick={handleStartWave}
+          onClick={onStartWave}
           disabled={!isConnected}
         >
           Start Wave
         </button>
         <button 
           className="btn btn-success"
-          onClick={handleSpawnEnemy}
+          onClick={onSpawnEnemy}
           disabled={!isConnected}
         >
           🦀 Spawn Test Enemy
         </button>
         <button 
-          className="btn btn-secondary"
-          onClick={() => setIsPaused(!isPaused)}
-        >
-          {isPaused ? '▶️ Resume' : '⏸️ Pause'}
-        </button>
-        <button 
           className="btn btn-danger"
-          onClick={() => {
-            setLocalTowers([])
-            setLocalEnemies([])
-            onClearTowers()
-          }}
+          onClick={onClearTowers}
+          disabled={!isConnected}
         >
           Clear All
         </button>
@@ -522,12 +487,12 @@ const GameCanvas = ({
 
       <div className="info-box">
         <p>
-          <strong>Towers:</strong> {localTowers.length} placed | 
-          <strong> Enemies:</strong> {localEnemies.length} active
-          {isPaused && <strong style={{color: '#ff9800'}}> | ⏸️ PAUSED</strong>}
+          <strong>Towers:</strong> {towers.length} | 
+          <strong> Enemies:</strong> {enemies.length} |
+          <strong> Projectiles:</strong> {projectiles.length}
         </p>
         <p className="hint">
-          💡 Place towers, then spawn enemies to watch them navigate around!
+          💡 Towers will automatically shoot enemies in range! 🎯
         </p>
       </div>
     </div>
