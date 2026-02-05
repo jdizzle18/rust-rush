@@ -223,7 +223,7 @@ MIT License - See LICENSE file for details
 
 **Jaime De La Paz**
 - GitHub: [@jaime-builds](https://github.com/jaime-builds)
-- Project Link: [https://github.com/jaime-builds/movie-analytics-dashboard](https://github.com/jaime-builds/movie-analytics-dashboard)
+- Project Link: [https://github.com/jaime-builds/movie-analytics-dashboard](https://github.com/jaime-builds/rust-rush)
 
 ---
 
