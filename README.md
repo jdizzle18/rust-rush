@@ -345,9 +345,8 @@ MIT License - See LICENSE file for details
 ## 📧 Contact
 
 **Jaime De La Paz**
-
 - GitHub: [@jaime-builds](https://github.com/jaime-builds)
-- Project Link: [https://github.com/jaime-builds/rust-rush](https://github.com/jaime-builds/rust-rush)
+- Project Link: [https://github.com/jaime-builds/movie-analytics-dashboard](https://github.com/jaime-builds/rust-rush)
 
 ---
 
