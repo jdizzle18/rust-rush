@@ -8,6 +8,8 @@ export type MessageType =
   | 'remove_tower'
   | 'start_wave'
   | 'pause_game'
+  | 'spawn_enemy'
+  | 'clear_all'
 
 export interface WebSocketMessage {
   type: MessageType

@@ -12,6 +12,11 @@ export interface Tower {
   tower_type: TowerType
   level: number
   range: number
+  damage?: number
+  fire_rate?: number
+  cooldown?: number
+  rotation?: number
+  current_target?: number
 }
 
 export interface Enemy {
@@ -25,9 +30,36 @@ export interface Enemy {
   path_index?: number
 }
 
+export interface Projectile {
+  id: number
+  position: Position
+  target_id: number
+  speed: number
+  damage: number
+  tower_id: number
+}
+
+export interface MuzzleFlash {
+  id: number
+  position: Position
+  duration: number
+}
+
+export interface Explosion {
+  id: number
+  position: Position
+  duration: number
+  radius: number
+}
+
 export interface GameState {
+  room_id?: string
+  players?: string[]
   towers: Tower[]
   enemies: Enemy[]
+  projectiles: Projectile[]
+  muzzle_flashes: MuzzleFlash[]
+  explosions: Explosion[]
   gold: number
   health: number
   wave: number
